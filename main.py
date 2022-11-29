@@ -5,6 +5,7 @@ import pandas as pd
 from ro_upload import ro_upload
 from db.connect import conn
 from big_sub_category import labelling, big_category
+from loguru import logger
 
 insert_size_limit = 10000
 
@@ -18,27 +19,31 @@ async def root():
 
 @app.post("/upload/ro")
 async def upload_ro(file: UploadFile = Form(...)):
+    logger.info("upload ro file start")
     # file validation
     if file.filename[:-3] == "xls" or file.filename[:-4] == "xlsx":
         raise Exception("엑셀 파일이 아닙니다.")
 
+    # file read
     read_file = await file.read()
     excel_file = pd.read_excel(read_file)
 
-    # column 명을 변경
+    # column convert
     excel_file = convert_ro_column(excel_file)
 
-    # ro 전처리
+    # ro pretreatment
     df = await ro_upload(excel_file)
 
-    # ro 저장
-    df = save_ro(df)
+    # ro save
+    df = await save_ro(df)
 
     sub_list, big_list = df["sub_phenom"].to_list(), df["big_phenom"].to_list()
-    sub_tmp, big_tmp = calculate_frequency(sub_list), calculate_frequency(big_list)
+    # calculate frequency
+    sub_cate, big_cate = calculate_frequency(sub_list), calculate_frequency(big_list)
 
-    save_category(big_tmp, sub_tmp)
-
+    # save category
+    await save_ro_category(big_cate, sub_cate)
+    logger.info("upload ro file end")
     return {"message": "ro save success"}
 
 
@@ -52,10 +57,11 @@ def convert_ro_column(excel_file):
     return excel_file
 
 
-def save_ro(data):
-    try:
-        cursor = conn.cursor()
+async def save_ro(data):
+    cursor = conn.cursor()
+    values = []
 
+    try:
         # bulk insert 를 위한 sql 작성
         bulk_insert_sql = """
         insert into repair_order (vehicle_type, part_number, cause_part, cause_part_name_kor, cause_part_name_eng, big_phenom, sub_phenom, special_note, location, cause_part_cluster, problematic, cause) 
@@ -63,7 +69,6 @@ def save_ro(data):
         """
 
         # big_phenom 을 맵핑 동작 반복문
-        values = []
         for idx, row in data.iterrows():
             tmp = row.to_list()
             tmp.insert(5, big_category[labelling[tmp[5]]])
@@ -72,9 +77,9 @@ def save_ro(data):
         cursor.executemany(bulk_insert_sql, values)
         conn.commit()
     except Exception:
-        print('update big, sub category sql error')
+        logger.warning('update big, sub category sql error')
     finally:
-        conn.close()
+        cursor.close()
 
     # 카테고리를 위한 새로운 df를 생성
     res = pd.DataFrame(values, columns=["vehicle_type", "part_number", "cause_part", "cause_part_name_kor",
@@ -83,9 +88,9 @@ def save_ro(data):
     return res
 
 
-def save_category(big_cate: dict, sub_cate: dict):
+async def save_ro_category(big_cate: dict, sub_cate: dict):
+    curser = conn.cursor()
     try:
-        curser = conn.cursor()
         update_big_category_sql = "update ro_big_category set count = count + %s where cate_name = %s"
 
         big_values = [(int(v), k) for k, v in big_cate.items()]
@@ -95,6 +100,6 @@ def save_category(big_cate: dict, sub_cate: dict):
         curser.executemany(update_big_category_sql, sub_values)
         conn.commit()
     except Exception:
-        print('update big, sub category sql error')
+        logger.warning('update big, sub category sql error')
     finally:
-        conn.close()
+        curser.close()
