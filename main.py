@@ -1,6 +1,6 @@
 import collections
 
-from fastapi import FastAPI, UploadFile, Form
+from fastapi import FastAPI, UploadFile, Form, HTTPException
 import pandas as pd
 from ro_upload import ro_upload
 from db.connect import conn
@@ -20,16 +20,18 @@ async def root():
 @app.post("/upload/ro")
 async def upload_ro(file: UploadFile = Form(...)):
     logger.info("upload ro file start")
+
     # file validation
     if file.filename[:-3] == "xls" or file.filename[:-4] == "xlsx":
-        raise Exception("엑셀 파일이 아닙니다.")
+        raise HTTPException(status_code=400)
 
-    # file read
-    read_file = await file.read()
-    excel_file = pd.read_excel(read_file)
-
-    # column convert
-    excel_file = convert_ro_column(excel_file)
+    # file read and convert column
+    try:
+        read_file = await file.read()
+        excel_file = pd.read_excel(read_file)
+        excel_file = convert_ro_column(excel_file)
+    except:
+        raise HTTPException(status_code=400)
 
     # ro pretreatment
     df = await ro_upload(excel_file)
