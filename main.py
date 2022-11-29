@@ -1,8 +1,8 @@
-from fastapi import FastAPI, UploadFile, Form, HTTPException
+from fastapi import FastAPI, UploadFile, Form
 import pandas as pd
+from ro_upload import ro_upload
 from db.connect import conn
-import db.sql as sql
-import ro.data as ro
+from big_sub_category import labelling, big_category
 
 insert_size_limit = 10000
 
@@ -23,32 +23,39 @@ async def upload_ro(file: UploadFile = Form(...)):
     read_file = await file.read()
     excel_file = pd.read_excel(read_file)
 
-    try:
-        await save_ro(excel_file)
-    except Exception:
-        raise HTTPException(status_code=403, detail="error insert, please check xlsx file data format")
-    return {"message": "Hello World"}
+    # column 명을 변경
+    excel_file = convert_ro_column(excel_file)
+
+    # ro 전처리
+    tmp = await ro_upload(excel_file)
+
+    # ro 저장
+    save_ro(tmp)
+    return {"message": "ro save success"}
 
 
-async def save_ro(excel_data):
-    # ./ro/data.py에 저장된 data
-    ro_rename_dict = ro.ro_rename_dict
-    ro_order_list = ro.ro_order_list
+def convert_ro_column(excel_file):
+    excel_file.columns = ["vehicle_type", "part_number", "cause_part", "cause_part_name_kor", "cause_part_name_eng",
+                          "phenomenon", "special_note", "location", "cause_part_cluster", "problematic", "cause"]
+    return excel_file
 
+
+def save_ro(data):
     cursor = conn.cursor()
-    bulk_insert_ro_sql = sql.bulk_insert_ro_sql
-    excel_data.rename(columns=ro_rename_dict, inplace=True)
-    data_str = ""
 
-    for j in range(insert_size_limit):
-        data_str += "("
-        sort_list = []
-        for i in ro_order_list[:-2]:
-            sort_list.append(str(excel_data.iloc[j][i]))
-        data_str += ",".join(sort_list)
-        data_str += "),"
+    # bulk insert 를 위한 sql 작성
+    bulk_insert_sql = """
+    insert into repair_order (vehicle_type, part_number, cause_part, cause_part_name_kor, cause_part_name_eng, big_phenom, sub_phenom, special_note, location, cause_part_cluster, problematic, cause) 
+    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+    """
 
-    # 맨 뒤에 , 없애기
-    bulk_insert_ro_sql += data_str[:len(data_str) - 1]
-    cursor.execute(bulk_insert_ro_sql)
+    # big_phenom 을 맵핑 동작 반복문
+    values = []
+    for idx, row in data.iterrows():
+        tmp = row.to_list()
+        tmp.insert(5, big_category[labelling[tmp[5]]])
+        values.append(tmp)
+
+    cursor.executemany(bulk_insert_sql, values)
     conn.commit()
+    cursor.close()
