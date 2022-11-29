@@ -1,10 +1,11 @@
 import pandas as pd
+from big_sub_category import big_category
 
 
 def ro_category(RO_df):
     # big category list
-    big_category = ["부품 외관", "시트 작동불량 / 시트벨트_작동불량", "시트 작동 소음/이음", "작동 불량", "경고등 점등", "소음/이음",
-                    "녹 발생", "진동", "냄새과다", "조립문제", "사용/위치 불편", "기타", "부품 도장", "도어 개폐불량", "기밀 불량"]
+    # big_category = ["부품 외관", "시트 작동불량 / 시트벨트_작동불량", "시트 작동 소음/이음", "작동 불량", "경고등 점등", "소음/이음",
+    #                 "녹 발생", "진동", "냄새과다", "조립문제", "사용/위치 불편", "기타", "부품 도장", "도어 개폐불량", "기밀 불량"]
 
     graph = pd.Series(RO_df['big_phenom']).value_counts()
     graph_df = pd.DataFrame(graph)
@@ -25,7 +26,7 @@ def ro_category(RO_df):
     sub_category_list = []
 
     for b in big_category:
-        big_category_label_count = int(graph_df[graph_df['big_phenom'] == b]['big_phenom_count'])
+        big_category_label_count = graph_df[graph_df['big_phenom'] == b]['big_phenom_count'].astype(int)
 
         sub_category = RO_df[RO_df['big_phenom'] == b]
         sub_category = pd.Series(sub_category['sub_phenom']).value_counts()
@@ -51,6 +52,6 @@ def ro_category(RO_df):
     sub_category_df = sub_category_df.sort_values(by=['sub_phenom_count'], ascending=False)
     sub_category_df = sub_category_df.reset_index()
     sub_category_df = sub_category_df.drop(columns='index')
-    # print("sub_category_df : ", sub_category_df)  # sub_category_df DataFrame DB저장 -- 필요
+    print("sub_category_df : ", sub_category_df)  # sub_category_df DataFrame DB저장 -- 필요
     # sub category TABLE
-    return graph_df, sub_category_df
+    return (graph_df, sub_category_df)
