@@ -2,7 +2,7 @@ import collections
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException
 import pandas as pd
-from ro_upload import ro_upload
+from ro_upload import ro_pretreatment
 from db.connect import conn
 from big_sub_category import labelling, big_category
 from loguru import logger
@@ -15,6 +15,30 @@ app = FastAPI()
 @app.get("")
 async def root():
     return {"hello": "world"}
+
+
+@app.get("/category/init")
+async def init():
+    cursor = conn.cursor()
+    insert_sub_cate_zero_sql = "insert into ro_sub_category (cate_name, big_cate_name, count) values (%s, %s, %s)"
+    insert_big_cate_zero_sql = "insert into ro_big_category (cate_name, count) values (%s,  %s)"
+    try:
+        sub_values = []
+        big_values = [[cate, 0] for cate in big_category.values()]
+
+        for sub_cate, val in labelling.items():
+            big_cate = big_category[val]
+            sub_values.append([sub_cate, big_cate, 0])
+
+        # sub category 초기화
+        cursor.executemany(insert_sub_cate_zero_sql, sub_values)
+        cursor.executemany(insert_big_cate_zero_sql, big_values)
+        conn.commit()
+    except:
+        logger.warning("sub category를 초기화하는 과정에서 문제가 발생하였습니다.")
+    finally:
+        cursor.close()
+    return {"init": "success"}
 
 
 @app.post("/upload/ro")
@@ -34,7 +58,7 @@ async def upload_ro(file: UploadFile = Form(...)):
         raise HTTPException(status_code=400)
 
     # ro pretreatment
-    df = await ro_upload(excel_file)
+    df = await ro_pretreatment(excel_file)
 
     # ro save
     df = await save_ro(df)
@@ -94,12 +118,13 @@ async def save_ro_category(big_cate: dict, sub_cate: dict):
     curser = conn.cursor()
     try:
         update_big_category_sql = "update ro_big_category set count = count + %s where cate_name = %s"
+        update_sub_category_sql = "update ro_sub_category set count = count + %s where cate_name = %s"
 
         big_values = [(int(v), k) for k, v in big_cate.items()]
         sub_values = [(int(v), k) for k, v in sub_cate.items()]
 
         curser.executemany(update_big_category_sql, big_values)
-        curser.executemany(update_big_category_sql, sub_values)
+        curser.executemany(update_sub_category_sql, sub_values)
         conn.commit()
     except Exception:
         logger.warning('update big, sub category sql error')

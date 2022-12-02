@@ -1,4 +1,3 @@
-import pandas as pd
 from bs4 import BeautifulSoup
 from hanspell import spell_checker
 import nltk
@@ -19,7 +18,7 @@ def confirm_kor_or_eng(input_s):
     return "한국어" if k_count > e_count else "영어"
 
 
-async def ro_upload(RO_df):
+async def ro_pretreatment(RO_df):
     # 사용자 불용어 사전
     stop_words = "1. 2. 3. 4. 1.1 1.2 2.1 2.2 3.1 3.2 4.1 4.2 점검 점검 및 원인 점검 사항 현상 조치 조치내용 점검내용 요망사항 현상: 점검: 내용 요망 사항 점검내용및원인"
     stop_words = set(stop_words.split(' '))
