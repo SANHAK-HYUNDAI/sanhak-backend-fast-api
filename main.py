@@ -1,8 +1,11 @@
+import collections
+
 from fastapi import FastAPI, UploadFile, Form, HTTPException
 import pandas as pd
+from ro_upload import ro_pretreatment
 from db.connect import conn
-import db.sql as sql
-import ro.data as ro
+from big_sub_category import labelling, big_category
+from loguru import logger
 
 insert_size_limit = 10000
 
@@ -14,41 +17,116 @@ async def root():
     return {"hello": "world"}
 
 
+@app.get("/category/init")
+async def init():
+    cursor = conn.cursor()
+    insert_sub_cate_zero_sql = "insert into ro_sub_category (cate_name, big_cate_name, count) values (%s, %s, %s)"
+    insert_big_cate_zero_sql = "insert into ro_big_category (cate_name, count) values (%s,  %s)"
+    try:
+        sub_values = []
+        big_values = [[cate, 0] for cate in big_category.values()]
+
+        for sub_cate, val in labelling.items():
+            big_cate = big_category[val]
+            sub_values.append([sub_cate, big_cate, 0])
+
+        # sub category 초기화
+        cursor.executemany(insert_sub_cate_zero_sql, sub_values)
+        cursor.executemany(insert_big_cate_zero_sql, big_values)
+        conn.commit()
+    except:
+        logger.warning("sub category를 초기화하는 과정에서 문제가 발생하였습니다.")
+    finally:
+        cursor.close()
+    return {"init": "success"}
+
+
 @app.post("/upload/ro")
 async def upload_ro(file: UploadFile = Form(...)):
+    logger.info("upload ro file start")
+
     # file validation
     if file.filename[:-3] == "xls" or file.filename[:-4] == "xlsx":
-        raise Exception("엑셀 파일이 아닙니다.")
+        raise HTTPException(status_code=400)
 
-    read_file = await file.read()
-    excel_file = pd.read_excel(read_file)
+    # file read and convert column
+    try:
+        read_file = await file.read()
+        excel_file = pd.read_excel(read_file)
+        excel_file = convert_ro_column(excel_file)
+    except:
+        raise HTTPException(status_code=400)
+
+    # ro pretreatment
+    df = await ro_pretreatment(excel_file)
+
+    # ro save
+    df = await save_ro(df)
+
+    sub_list, big_list = df["sub_phenom"].to_list(), df["big_phenom"].to_list()
+    # calculate frequency
+    sub_cate, big_cate = calculate_frequency(sub_list), calculate_frequency(big_list)
+
+    # save category
+    await save_ro_category(big_cate, sub_cate)
+    logger.info("upload ro file end")
+    return {"message": "ro save success"}
+
+
+def calculate_frequency(elems):
+    return dict(collections.Counter(elems))
+
+
+def convert_ro_column(excel_file):
+    excel_file.columns = ["vehicle_type", "part_number", "cause_part", "cause_part_name_kor", "cause_part_name_eng",
+                          "phenomenon", "special_note", "location", "cause_part_cluster", "problematic", "cause"]
+    return excel_file
+
+
+async def save_ro(data):
+    cursor = conn.cursor()
+    values = []
 
     try:
-        await save_ro(excel_file)
+        # bulk insert 를 위한 sql 작성
+        bulk_insert_sql = """
+        insert into repair_order (vehicle_type, part_number, cause_part, cause_part_name_kor, cause_part_name_eng, big_phenom, sub_phenom, special_note, location, cause_part_cluster, problematic, cause) 
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+        """
+
+        # big_phenom 을 맵핑 동작 반복문
+        for idx, row in data.iterrows():
+            tmp = row.to_list()
+            tmp.insert(5, big_category[labelling[tmp[5]]])
+            values.append(tmp)
+
+        cursor.executemany(bulk_insert_sql, values)
+        conn.commit()
     except Exception:
-        raise HTTPException(status_code=403, detail="error insert, please check xlsx file data format")
-    return {"message": "Hello World"}
+        logger.warning('update big, sub category sql error')
+    finally:
+        cursor.close()
+
+    # 카테고리를 위한 새로운 df를 생성
+    res = pd.DataFrame(values, columns=["vehicle_type", "part_number", "cause_part", "cause_part_name_kor",
+                                        "cause_part_name_eng", "big_phenom", "sub_phenom", "special_note", "location",
+                                        "cause_part_cluster", "problematic", "cause"])
+    return res
 
 
-async def save_ro(excel_data):
-    # ./ro/data.py에 저장된 data
-    ro_rename_dict = ro.ro_rename_dict
-    ro_order_list = ro.ro_order_list
+async def save_ro_category(big_cate: dict, sub_cate: dict):
+    curser = conn.cursor()
+    try:
+        update_big_category_sql = "update ro_big_category set count = count + %s where cate_name = %s"
+        update_sub_category_sql = "update ro_sub_category set count = count + %s where cate_name = %s"
 
-    cursor = conn.cursor()
-    bulk_insert_ro_sql = sql.bulk_insert_ro_sql
-    excel_data.rename(columns=ro_rename_dict, inplace=True)
-    data_str = ""
+        big_values = [(int(v), k) for k, v in big_cate.items()]
+        sub_values = [(int(v), k) for k, v in sub_cate.items()]
 
-    for j in range(insert_size_limit):
-        data_str += "("
-        sort_list = []
-        for i in ro_order_list[:-2]:
-            sort_list.append(str(excel_data.iloc[j][i]))
-        data_str += ",".join(sort_list)
-        data_str += "),"
-
-    # 맨 뒤에 , 없애기
-    bulk_insert_ro_sql += data_str[:len(data_str) - 1]
-    cursor.execute(bulk_insert_ro_sql)
-    conn.commit()
+        curser.executemany(update_big_category_sql, big_values)
+        curser.executemany(update_sub_category_sql, sub_values)
+        conn.commit()
+    except Exception:
+        logger.warning('update big, sub category sql error')
+    finally:
+        curser.close()

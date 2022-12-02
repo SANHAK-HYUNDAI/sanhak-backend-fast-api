@@ -8,4 +8,3 @@ conn = mysql.connect(
     database="hyundaitransys",
     charset="utf8"
 )
-cursor = conn.cursor()
