@@ -14,16 +14,14 @@ ro_rename_dict = {
 
 ro_order_list = [
     "vehicle_type",
-    "cause",
     "part_number",
     "cause_part",
     "cause_part_name_kor",
     "cause_part_name_eng",
-    "cause_part_cluster",
-    "symptom",
+    "sub_phenom",
     "special_note",
     "location",
-    "problematic_situation",
-    "created_at",
-    "modified_at"
+    "cause_part_cluster",
+    "problematic",
+    "cause"
 ]

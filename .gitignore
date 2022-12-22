@@ -7,3 +7,5 @@ py-hanspell
 
 *.csv
 *.json
+venv/**
+test_file

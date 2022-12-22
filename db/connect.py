@@ -1,10 +1,21 @@
-import pymysql as mysql
+import aiomysql as mysql
+import asyncio
 
-conn = mysql.connect(
-    host="localhost",
-    port=3306,
-    user="sanhak",
-    password="sanhak",
-    database="hyundaitransys",
-    charset="utf8"
-)
+loop = asyncio.get_event_loop()
+
+conn = None
+
+
+async def create_connection():
+    if not conn:
+        return await mysql.connect(
+            host="localhost",
+            port=3306,
+            user="sanhak",
+            password="sanhak",
+            db="hyundaitransys",
+            charset="utf8",
+            loop=loop
+        )
+    else:
+        return conn
