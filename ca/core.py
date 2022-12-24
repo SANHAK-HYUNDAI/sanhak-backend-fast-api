@@ -12,6 +12,7 @@ from konlpy.tag import Mecab
 
 from ca.data import ca_rename_dict
 from ro.data import ro_order_list
+from loguru import logger
 
 """
 ### calculate_similar 함수 parameter 설명 ###
@@ -41,7 +42,7 @@ pprint.pprint(result)
 
 # 유사도 분석 O(N^2)
 def calculate_similar_sequential_matcher(content_list, special_note_list, n):
-    print("start", n)
+    logger.info("start:" + n)
     result = dict()
     se = difflib.SequenceMatcher()
     for ca_id, content in content_list:
@@ -53,7 +54,7 @@ def calculate_similar_sequential_matcher(content_list, special_note_list, n):
 
         # 전체 유사도에서 가장 유사도가 큰 정보만 걸러서 저장하기
         result[ca_id] = sorted(similar_list, key=lambda x: x[1], reverse=True)[:8]
-    print("end", n)
+    logger.info("end:" + n)
     return result
 
 
@@ -136,15 +137,12 @@ pprint.pprint(result)
 """
 
 
-def calculate_similar_multi_processing(func, content_list, special_note_list, process_count=1):
+def calculate_similar_multi_processing(func, content_list, special_note_list, pool, process_count=1):
     # 사전 처리
     if process_count <= 0:
         return
     if not len(content_list) or not len(special_note_list):
         return
-
-    # thread pool 생성
-    pool = multiprocessing.Pool(process_count)
 
     # 병렬 처리를 위해서 전체 길이를 이용해서 파트 부분 연산
     total = len(content_list)
@@ -156,7 +154,6 @@ def calculate_similar_multi_processing(func, content_list, special_note_list, pr
 
     # 프로세스 풀에서 병렬 연산 진행
     res = pool.starmap(func, arg)
-    pool.close()
     result = dict()
     for data in res:
         result.update(data)

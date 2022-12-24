@@ -1,3 +1,4 @@
+import re
 import warnings
 
 from loguru import logger
@@ -29,13 +30,10 @@ async def add_big_category(df):
     return df
 
 
-async def ro_findall():
-    conn = await create_connection()
+async def ro_findall(cursor):
     ro_select_findall_sql = 'select ro_id, special_note from repair_order'
-    async with conn.cursor() as cursor:
-        await cursor.execute(ro_select_findall_sql)
-        res = await cursor.fetchall()
-        await conn.commit()
+    await cursor.execute(ro_select_findall_sql)
+    res = await cursor.fetchall()
     return res
 
 
@@ -44,44 +42,54 @@ def convert_ro_column(excel_file):
     return excel_file
 
 
-async def save_ro_category(big_cate: dict, sub_cate: dict):
-    con = await create_connection()
-    cursor = await con.cursor()
-    try:
-        update_big_category_sql = "update ro_big_category set count = count + %s where cate_name = %s"
-        update_sub_category_sql = "update ro_sub_category set count = count + %s where cate_name = %s"
-
-        big_values = [(int(v), k) for k, v in big_cate.items()]
-        sub_values = [(int(v), k) for k, v in sub_cate.items()]
-
-        await cursor.executemany(update_big_category_sql, big_values)
-        await cursor.executemany(update_sub_category_sql, sub_values)
-        await con.commit()
-    except Exception:
-        logger.warning('update big, sub category sql error')
-    finally:
-        await cursor.close()
+async def save_ro_big_category(big_cate: dict, cursor):
+    update_big_category_sql = "update ro_big_category set count = count + %s where cate_name = %s"
+    big_values = [(int(v), k) for k, v in big_cate.items()]
+    await cursor.executemany(update_big_category_sql, big_values)
+    # await conn.commit()
 
 
-async def save_ro(data):
-    con = await create_connection()
-    cursor = await con.cursor()
+async def save_ro_sub_category(sub_cate: dict, cursor):
+    update_sub_category_sql = "update ro_sub_category set count = count + %s where cate_name = %s"
+    sub_values = [(int(v), k) for k, v in sub_cate.items()]
+    await cursor.executemany(update_sub_category_sql, sub_values)
+    # await conn.commit()
+
+
+async def save_ro(data, cursor):
     values = []
-    try:
-        # bulk insert 를 위한 sql 작성
-        bulk_insert_sql = """
-        insert into repair_order (vehicle_type, part_number, cause_part, cause_part_name_kor, cause_part_name_eng, big_phenom, sub_phenom, special_note, location, cause_part_cluster, problematic, cause) 
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
-        """
+    # bulk insert 를 위한 sql 작성
+    bulk_insert_sql = """
+    insert into repair_order (vehicle_type, part_number, cause_part, cause_part_name_kor, cause_part_name_eng, big_phenom, sub_phenom, special_note, location, cause_part_cluster, problematic, cause) 
+    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+    """
 
-        # big_phenom 을 맵핑 동작 반복문
-        for idx, row in data.iterrows():
-            tmp = row.to_list()
-            values.append(tmp)
+    # big_phenom 을 맵핑 동작 반복문
+    for idx, row in data.iterrows():
+        tmp = row.to_list()
+        values.append(tmp)
 
-        await cursor.executemany(bulk_insert_sql, values)
-        await con.commit()
-    except Exception:
-        logger.warning('update big, sub category sql error')
-    finally:
-        await cursor.close()
+    await cursor.executemany(bulk_insert_sql, values)
+    # await conn.commit()
+
+
+async def ro_preprocessing(ro_data):
+    ro_data = [(idx, content) for idx, content in ro_data if content and isinstance(content, str)]
+    # RO:한글만 출력이 되도록 필터링
+    ro_data = [(idx, re.sub("[^가-힣 ]+", "", special_note)) for idx, special_note in ro_data]
+    # RO:개행 문자 삭제
+    ro_data = [(idx, re.sub('\n', '', special_note)) for idx, special_note in ro_data]
+    # RO:긴 공백을 하나의 공백으로 바꾸기
+    ro_data = [(idx, re.sub(' +', ' ', special_note)) for idx, special_note in ro_data]
+    return ro_data
+
+
+async def save_ro_frequency(keyword_frequency, cursor):
+    truncate_ro_keyword_sql = 'truncate table ro_keyword'
+    insert_ro_keyword_frequency_sql = 'insert into ro_keyword (word, count) values (%s, %s)'
+
+    values = [(k, v) for k, v in keyword_frequency.items()]
+
+    await cursor.execute(truncate_ro_keyword_sql)
+    await cursor.executemany(insert_ro_keyword_frequency_sql, values)
+    # await conn.commit()
