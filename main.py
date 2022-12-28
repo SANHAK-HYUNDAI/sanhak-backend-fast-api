@@ -1,4 +1,4 @@
-import asyncio
+import collections
 import collections
 import itertools
 import multiprocessing
@@ -7,9 +7,9 @@ import pandas as pd
 from fastapi import FastAPI, UploadFile, Form, HTTPException
 from loguru import logger
 
-from big_sub_category import labelling, big_category
 from ca.core import calculate_similar_multi_processing, calculate_similar_cosine, morphological_analysis
-from ca.service import save_ca_field_keyword, save_ca_keyword, ca_findall, save_ca, convert_ca_column, ca_preprocessing
+from ca.service import save_ca_field_keyword, save_ca_keyword, ca_findall, save_ca, convert_ca_column, ca_preprocessing, \
+    save_ca_big_category, save_ca_sub_category
 from db.connect import create_connection
 from ro.service import add_big_category, ro_findall, save_ro, convert_ro_column, ro_preprocessing, save_ro_sub_category, \
     save_ro_big_category, save_ro_frequency
@@ -81,7 +81,6 @@ async def upload_ro(file: UploadFile = Form(...)):
             await save_ro_sub_category(sub_cate, cursor),
             await save_ro_big_category(big_cate, cursor),
             await save_ro(df, cursor)
-            # raise HTTPException(status_code=500)
             await conn.commit()
     logger.info("upload ro test_file end")
     return {"message": "ro save success"}
@@ -119,6 +118,8 @@ async def upload_ca(file: UploadFile = Form(...)):
             ca_data = await ca_findall(cursor)
             ro_data = await ro_findall(cursor)
 
+            logger.info(len(ca_data))
+
             logger.info("유사도 분석을 위한 전처리 시작")
             ca_data = await ca_preprocessing(ca_data)
             ro_data = await ro_preprocessing(ro_data)
@@ -140,14 +141,37 @@ async def upload_ca(file: UploadFile = Form(...)):
 
             logger.info("유사도, 키워드에 대한 저장 및 키워드 빈도수 DB 저장")
             # 유사도, 형태소 결과를 비동기로 저장
+            # 유사도 저장
             await save_similar(similar_list, cursor),
+            # 키워드 저장
             await save_ca_field_keyword(morpheme_list, cursor),
+            # 키워드 빈도수 저장
             await save_ca_keyword(keyword_frequency, cursor)
+            # ca와 관련된 상위 카테고리와 하위 카테고리 빈도수를 측정해서 저장
+
+            logger.info("CA와 맵핑된 RO 정보의 대 카테고리와, 중 카테고리를 불러와서 빈도수 측정해야함.")
+            phenom_list = await find_total_phenom_frequency(cursor)
+            print(phenom_list)
+
+            sub_phenom_frequency = collections.Counter([sub for big, sub in phenom_list])
+            big_phenom_frequency = collections.Counter([big for big, sub in phenom_list])
+
+            print(big_phenom_frequency)
+            print(sub_phenom_frequency)
+
+            logger.info("CA 카테고리 빈도수 저장 완료")
+            await save_ca_big_category(big_phenom_frequency, cursor)
+            await save_ca_sub_category(sub_phenom_frequency, cursor)
+
+            logger.info("CA 키워드 부분에 저장 시작")
             await conn.commit()
 
     logger.info("CA 업로드 종료")
     return {"message": "CA test_file upload success"}
 
 
-def calculate_frequency(elems):
+def calculate_frequency(elems) -> dict:
     return dict(collections.Counter(elems))
+
+
+

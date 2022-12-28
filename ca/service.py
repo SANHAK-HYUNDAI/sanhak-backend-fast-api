@@ -4,7 +4,6 @@ import warnings
 import pandas as pd
 
 from ca.data import ca_column_convert
-from db.connect import create_connection
 
 warnings.filterwarnings(action='ignore')
 
@@ -56,3 +55,15 @@ async def ca_preprocessing(ca_data):
     # CA:긴 공백은 하나의 공백으로 바꾸기
     ca_data = [(idx, re.sub(' +', ' ', content)) for idx, content in ca_data]
     return ca_data
+
+
+async def save_ca_big_category(big_cate: dict, cursor):
+    update_big_category_sql = "update ca_big_category set count = count + %s where cate_name = %s"
+    big_values = [(int(v), k) for k, v in big_cate.items()]
+    await cursor.executemany(update_big_category_sql, big_values)
+
+
+async def save_ca_sub_category(sub_cate: dict, cursor):
+    update_sub_category_sql = "update ca_sub_category set count = count + %s where cate_name = %s"
+    sub_values = [(int(v), k) for k, v in sub_cate.items()]
+    await cursor.executemany(update_sub_category_sql, sub_values)
