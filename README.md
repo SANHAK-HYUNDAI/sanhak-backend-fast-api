@@ -15,6 +15,11 @@
  - bulk insert(update)를 이용한 대량의 정보 저장 효율 향상
    - 단일 insert 대비 <strong>2.6배</strong>의 성능 향상
 
+### Data Flow
+
+![ca_data_flow_chart drawio](https://user-images.githubusercontent.com/73744183/210063395-24f3761f-fcdb-4b49-9ae5-0148175d32ad.svg)
+
+
 ### Skill Set
 > #### Backend
 > - fastapi
