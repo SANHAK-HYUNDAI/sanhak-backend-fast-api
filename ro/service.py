@@ -86,7 +86,7 @@ async def ro_preprocessing(ro_data):
 
 async def save_ro_frequency(keyword_frequency, cursor):
     truncate_ro_keyword_sql = 'truncate table ro_keyword'
-    insert_ro_keyword_frequency_sql = 'insert into ro_keyword (word, count) values (%s, %s)'
+    insert_ro_keyword_frequency_sql = 'insert into ro_keyword (word, frequency) values (%s, %s)'
 
     values = [(k, v) for k, v in keyword_frequency.items()]
 

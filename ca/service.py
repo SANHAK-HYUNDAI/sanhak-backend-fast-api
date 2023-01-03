@@ -34,7 +34,7 @@ async def save_ca_field_keyword(morpheme_list, cursor):
 
 
 async def save_ca_keyword(keyword_frequency, cursor):
-    insert_keyword_frequency_sql = "insert into ca_keyword (word, count) values (%s, %s)"
+    insert_keyword_frequency_sql = "insert into ca_keyword (word, frequency) values (%s, %s)"
     values = [(key, val) for key, val in keyword_frequency.items()]
     await cursor.execute("truncate table ca_keyword")
     await cursor.executemany(insert_keyword_frequency_sql, values)

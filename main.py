@@ -1,5 +1,4 @@
 import collections
-import collections
 import itertools
 import multiprocessing
 
@@ -13,7 +12,7 @@ from ca.service import save_ca_field_keyword, save_ca_keyword, ca_findall, save_
 from db.connect import create_connection
 from ro.service import add_big_category, ro_findall, save_ro, convert_ro_column, ro_preprocessing, save_ro_sub_category, \
     save_ro_big_category, save_ro_frequency
-from similarity.service import save_similar
+from similarity.service import save_similar, find_total_phenom_frequency
 
 insert_size_limit = 10000
 
@@ -172,6 +171,3 @@ async def upload_ca(file: UploadFile = Form(...)):
 
 def calculate_frequency(elems) -> dict:
     return dict(collections.Counter(elems))
-
-
-
