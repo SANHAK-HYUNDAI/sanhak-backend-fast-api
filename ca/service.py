@@ -58,12 +58,14 @@ async def ca_preprocessing(ca_data):
 
 
 async def save_ca_big_category(big_cate: dict, cursor):
-    update_big_category_sql = "update ca_big_category set count = count + %s where cate_name = %s"
+    # ca의 경우 전체 ca 데이터를 불러와서 유사도 분석을 진행하기 때문에 이전의 count 값을 고려할 필요없이 그대로 update하면됨
+    update_big_category_sql = "update ca_big_category set count = %s where cate_name = %s"
     big_values = [(int(v), k) for k, v in big_cate.items()]
     await cursor.executemany(update_big_category_sql, big_values)
 
 
 async def save_ca_sub_category(sub_cate: dict, cursor):
-    update_sub_category_sql = "update ca_sub_category set count = count + %s where cate_name = %s"
+    # ca의 경우 전체 ca 데이터를 불러와서 유사도 분석을 진행하기 때문에 이전의 count 값을 고려할 필요없이 그대로 update하면됨
+    update_sub_category_sql = "update ca_sub_category set count = %s where cate_name = %s"
     sub_values = [(int(v), k) for k, v in sub_cate.items()]
     await cursor.executemany(update_sub_category_sql, sub_values)
