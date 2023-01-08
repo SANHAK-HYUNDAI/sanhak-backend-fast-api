@@ -58,6 +58,7 @@ async def upload_ro(ro: UploadFile = Form(...)):
     df["special_note"] = df["special_note"].str.replace(r' +', ' ', regex=True)  # 긴 공백 문자 삭제
     df["special_note"] = df["special_note"].str.replace('\\|', '', regex=True)  # 이상한 문자 삭제
     df["special_note"] = df["special_note"].str.strip()  # 앞뒤 공백 삭제
+    df["special_note"] = df["special_note"].str.replace('\n', '')  # 개행 문자 제거
 
     #
     df["special_note"].replace('', np.nan, inplace=True)
@@ -148,6 +149,7 @@ async def upload_ca(ca: UploadFile = Form(...)):
 
             for word in need_to_remove_word:
                 ca_df.replace(word, '', inplace=True)
+            ca_df["content"] = ca_df["content"].str.replace('\n', '')  # 개행 문자 제거
 
             logger.info("CA에 대한 전체 내용 저장")
             # ca 정보에 대해서 저장
