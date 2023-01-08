@@ -16,11 +16,11 @@ from similarity.service import save_similar, find_total_phenom_frequency
 
 insert_size_limit = 10000
 
-app = FastAPI()
+app = FastAPI(docs_url="/upload/docs", openapi_url="/upload/openapi.json")
 pool = multiprocessing.Pool(4)
 
 
-@app.get("")
+@app.get("/upload/test")
 async def root():
     return {"hello": "world"}
 
@@ -31,17 +31,17 @@ def is_excel(file_name: str):
 
 
 @app.post("/upload/ro")
-async def upload_ro(file: UploadFile = Form(...)):
+async def upload_ro(ro: UploadFile = Form(...)):
     logger.info("upload ro test_file start")
 
     logger.info("입력된 파일에 대한 Validation 체크")
     # 엑셀 파일이 맞는지 검증하는 단계
-    if is_excel(file.filename):
+    if is_excel(ro.filename):
         raise HTTPException(status_code=400)
 
     # 파일을 읽고 그 컬럼 이름을 변경하는 단계
     try:
-        read_file = await file.read()
+        read_file = await ro.read()
         excel_file = pd.read_excel(read_file)
         df = convert_ro_column(excel_file)
     except:
@@ -86,19 +86,19 @@ async def upload_ro(file: UploadFile = Form(...)):
 
 
 @app.post('/upload/ca')
-async def upload_ca(file: UploadFile = Form(...)):
+async def upload_ca(ca: UploadFile = Form(...)):
     logger.info("CA 업로드 시작")
     async with await create_connection() as conn:
         async with conn.cursor() as cursor:
 
             # test_file validation
             file_extension = ["xls", "xlsx"]
-            if file and (file.filename[:-3] in file_extension or file.filename[:-4] in file_extension):
+            if ca and (ca.filename[:-3] in file_extension or ca.filename[:-4] in file_extension):
                 raise HTTPException(status_code=400)
 
             # test_file read and convert column
             try:
-                read_file = await file.read()
+                read_file = await ca.read()
                 excel_file = pd.read_excel(read_file)
                 ca_df = convert_ca_column(excel_file)
             except:
