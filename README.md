@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 2. konlpy mecab 설치
 
-![mecab설치링크](https://konlpy-ko.readthedocs.io/ko/v0.4.3/install/)
+[설치하기 - KoNLPy 0.4.3 documentation](https://konlpy-ko.readthedocs.io/ko/v0.4.3/install/)
 
 3. 로컬에서 fast api 실행
 
