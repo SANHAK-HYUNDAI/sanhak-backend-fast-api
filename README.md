@@ -19,6 +19,7 @@
 
 ![ca_data_flow_chart drawio](https://user-images.githubusercontent.com/73744183/210063395-24f3761f-fcdb-4b49-9ae5-0148175d32ad.svg)
 
+
 ### How to use
 
 1. 파이썬 모듈 일괄 설치
@@ -40,6 +41,14 @@ uvicorn --reload main:app
 ```
 uvicorn --reload --host 127.0.0.1 --port 8080 main:app
 ```
+
+### Database Setting(ERD)
+
+<img width="966" alt="sanhak-erd-re" src="https://user-images.githubusercontent.com/73744183/211250981-252203d7-09e9-4be6-9d04-f0f7d51b1f57.png">
+
+#### Database Init DDL File Download
+
+Download : [init.zip](https://github.com/SANHAK-HYUNDAI/sanhak-backend-fast-api/files/10370876/init.zip)
 
 ### Skill Set
 
