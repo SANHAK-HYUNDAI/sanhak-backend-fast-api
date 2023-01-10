@@ -161,9 +161,9 @@ async def upload_ca(ca: UploadFile = Form(...)):
 
             logger.info(len(ca_data))
 
-            logger.info("유사도 분석을 위한 전처리 시작")
-            ca_data = await ca_preprocessing(ca_data)
-            ro_data = await ro_preprocessing(ro_data)
+            # logger.info("유사도 분석을 위한 전처리 시작")
+            # ca_data = await ca_preprocessing(ca_data)
+            # ro_data = await ro_preprocessing(ro_data)
 
             logger.info("유사도 분석 병렬 processing 시작")
             # 유사도 분석 -> 현재 os의 cpu 개수 만큼 병렬 처리 시작

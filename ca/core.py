@@ -5,6 +5,8 @@ import re
 import time
 
 import difflib
+
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -87,27 +89,19 @@ pprint.pprint(result)
 def calculate_similar_cosine(content_list, special_note_list, n):
     print("start", n)
     result = dict()
-    tfidf = TfidfVectorizer()
-    ca_id_list = [ca_id for ca_id, content in content_list]
-    contents = [content for ca_id, content in content_list]
+    tfidf = TfidfVectorizer(ngram_range=(1, 5), min_df=3, max_df=0.9)
 
     ro_id_list = [ro_id for ro_id, special_note in special_note_list]
     special_notes = [special_note for ro_id, special_note in special_note_list]
 
-    # ro의 단어에 대해서 학습하고 그 행렬값을 반환합니다.
-    ro_matrix = tfidf.fit_transform(special_notes)
-    # ca 단어에 대해서는 학습x, ro에 단어 사전에 맞추어서 행렬 반환
-    ca_matrix = tfidf.transform(contents)
+    for ca_id, content in content_list:
+        data = [*special_notes, content]  # 학습시킬 데이터
+        tfidf_matrix = tfidf.fit_transform(data)
+        cosine_sim = cosine_similarity(tfidf_matrix[-1], tfidf_matrix)
+        recommendation_need = cosine_sim[-1]
 
-    # 유사도 분석 시작 -> 너무 빨라서 이거 무조건 사용해야할듯
-    cosine_sim = cosine_similarity(ca_matrix, ro_matrix)
-
-    for ca_id, row in zip(ca_id_list, cosine_sim):
-        # index 정보가 필요하기 때문에 해당 인덱스 정보도 같이 넣기 -> 물론 추후에 ro_id, ca_id 같은건 입력 데이터에 같이 들어가 있을 예정이기 때문에 enumerate를 제거해아함.
-        row = [(ro_id, data) for ro_id, data in zip(ro_id_list, row)]
-        # 유사도 분석 결과를 이용하여서 정렬 후 8개만 잘라내기
-        result[ca_id] = sorted(row, key=lambda x: x[1], reverse=True)[:8]
-
+        recommend_index = np.argsort(recommendation_need)[::-1][3:11]
+        result[ca_id] = [(ro_id_list[idx], recommendation_need[idx]) for idx in recommend_index]
     print("end", n)
     return result
 
