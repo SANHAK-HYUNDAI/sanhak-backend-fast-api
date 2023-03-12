@@ -9,3 +9,5 @@ py-hanspell
 *.json
 venv/**
 test_file
+test
+mysql

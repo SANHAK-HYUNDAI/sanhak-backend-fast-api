@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  fast-api:
+    image: sanhak-fast-api
+    container_name: sanhak-fast-api-server
+    restart: always
+    ports:
+      - "8777:8777"
+    networks:
+      - sanhak-net
+
+  db:
+    image: mysql:latest
+    command: --default-authentication-plugin=mysql_native_password
+    container_name: sanhak-mysql-server
+    restart: always
+    environment:
+      MYSQL_DATABASE: hyundaitransys
+      MYSQL_USER:
+      MYSQL_PASSWORD:
+      MYSQL_ROOT_PASSWORD:
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - sanhak-net
+networks:
+  sanhak-net:
