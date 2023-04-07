@@ -10,8 +10,15 @@ services:
       - sanhak-net
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  spring:
+    image: rhlehfndvkd7557/sanhak-spring:3
+    container_name: sanhak-spring-server
+    networks:
+      - sanhak-net
+
   fast-api:
-    image: rhlehfndvkd7557/sanhak-fast-api:1
+    image: rhlehfndvkd7557/sanhak-fast-api:2
     container_name: sanhak-fast-api-server
     restart: always
     ports:
