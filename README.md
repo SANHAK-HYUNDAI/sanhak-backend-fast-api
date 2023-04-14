@@ -1,4 +1,16 @@
-# SANHAK Backend Fast-API(Python)
+<p align="center">
+<img src="https://user-images.githubusercontent.com/73744183/232030952-cb08ddc9-818c-437b-8dc8-aec63d9042f0.png">
+</p>
+
+<p align="center">
+<img src="https://img.shields.io/badge/python-3.9-blue">
+<img src="https://img.shields.io/badge/FastAPI-0.88.0-blue">
+<img src="https://img.shields.io/badge/version-v1.0.0-blue">
+<img src="https://img.shields.io/badge/license-MIT-brightgreen.svg"/>
+</p>
+
+<h1 align="center">Sanhak Backend FastAPI</h1>
+
 
 ### Purpose
 
