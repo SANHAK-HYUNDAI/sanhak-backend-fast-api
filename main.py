@@ -5,6 +5,7 @@ import multiprocessing
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from ca.core import calculate_similar_multi_processing, calculate_similar_cosine, morphological_analysis
@@ -19,6 +20,7 @@ from big_sub_category import big_category, labelling
 insert_size_limit = 10000
 
 app = FastAPI(docs_url="/upload/docs", openapi_url="/upload/openapi.json")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 pool = multiprocessing.Pool(4)
 
 
@@ -234,8 +236,10 @@ async def clear():
             await cursor.executemany("insert into ro_big_category (cate_name, count)  values (%s, %s)", values)
 
             values = [(sub_cate, 0, big_category[v]) for sub_cate, v in labelling]
-            await cursor.executemany("insert into ca_sub_category (cate_name, count, big_cate_name) values (%s, %s, %s)", values)
-            await cursor.executemany("insert into ro_sub_category (cate_name, count, big_cate_name) values (%s, %s, %s)", values)
+            await cursor.executemany(
+                "insert into ca_sub_category (cate_name, count, big_cate_name) values (%s, %s, %s)", values)
+            await cursor.executemany(
+                "insert into ro_sub_category (cate_name, count, big_cate_name) values (%s, %s, %s)", values)
 
             await conn.commit()
     return {"message": "clear success"}
